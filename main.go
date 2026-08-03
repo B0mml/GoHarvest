@@ -60,14 +60,13 @@ func main() {
 	})
 
 	c.OnScraped(func(r *colly.Response) {
-		fmt.Printf("Scraping fertig! %d Artikel gefunden.\n", len(articles))
+		fmt.Printf("Done scraping, %d articles found.\n", len(articles))
 
 		for i, article := range articles {
 			if i >= 5 {
 				break
 			}
 
-			// Artikel zu JSON umwandeln
 			body, err := json.Marshal(article)
 			if err != nil {
 				log.Println("JSON-Error:", err)
@@ -85,9 +84,9 @@ func main() {
 				},
 			)
 			if err != nil {
-				log.Println("Fehler beim Senden an RabbitMQ:", err)
+				log.Println("Error sending to RabbitMQ:", err)
 			} else {
-				fmt.Printf("--> Artikel gesendet: %s\n", article.Title)
+				fmt.Printf("--> Article sent: %s\n", article.Title)
 			}
 		}
 	})
