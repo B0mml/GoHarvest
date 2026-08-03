@@ -1,10 +1,14 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log"
+	"os"
+	"time"
 
+	_ "github.com/lib/pq"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
@@ -20,11 +24,60 @@ func failOnError(err error, msg string) {
 }
 
 func main() {
-	conn, err := amqp.Dial("amqp://guest:guest@rabbitmq:5672/")
-	failOnError(err, "Failed to connect to RabbitMQ")
-	defer conn.Close()
+	dbHost := os.Getenv("DB_HOST")
+	if dbHost == "" {
+		dbHost = "localhost"
+	}
+	connStr := fmt.Sprintf("host=%s port=5432 user=user password=password dbname=itemharvester sslmode=disable", dbHost)
 
-	ch, err := conn.Channel()
+	var db *sql.DB
+	var err error
+
+	for range 10 {
+		db, err = sql.Open("postgres", connStr)
+		if err == nil {
+			err = db.Ping()
+			if err == nil {
+				break
+			}
+		}
+		log.Println("Waiting for postgres")
+		time.Sleep(2 * time.Second)
+	}
+	if err != nil {
+		log.Fatalf("Could not connect to Database: %v", err)
+	}
+	defer db.Close()
+
+	log.Println("Successfully connected to Database!")
+
+	createTableSQL := `
+	CREATE TABLE IF NOT EXISTS articles (
+		id SERIAL PRIMARY KEY,
+		title TEXT NOT NULL,
+		url TEXT UNIQUE NOT NULL,
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+	);`
+	_, err = db.Exec(createTableSQL)
+	if err != nil {
+		log.Fatalf("Error creating table: %v", err)
+	}
+
+	// Connecting to rabbitmq
+	var rabbitCon *amqp.Connection
+	for range 10 {
+		rabbitCon, err = amqp.Dial("amqp://guest:guest@rabbitmq:5672/")
+		if err == nil {
+			break
+		}
+		log.Println("Waiting for RabbitMQ...")
+		time.Sleep(2 * time.Second)
+	}
+
+	failOnError(err, "Failed to connect to RabbitMQ")
+	defer rabbitCon.Close()
+
+	ch, err := rabbitCon.Channel()
 	failOnError(err, "Failed to open a channel")
 	defer ch.Close()
 
@@ -46,15 +99,19 @@ func main() {
 
 	for d := range msgs {
 		var article Article
-
 		err := json.Unmarshal(d.Body, &article)
 		if err != nil {
-			log.Println("Error unpacking", err)
+			log.Println("Error unpacking json", err)
 			continue
 		}
 
-		fmt.Println("------------------------------------")
-		fmt.Printf("Received: %s\n", article.Title)
-		fmt.Printf("Link: %s\n", article.URL)
+		insertSQL := `INSERT INTO articles (title, url) VALUES ($1, $2) ON CONFLICT (url) DO NOTHING;`
+		_, err = db.Exec(insertSQL, article.Title, article.URL)
+		if err != nil {
+			log.Printf("Fehler beim Speichern in Postgres: %v", err)
+		} else {
+			log.Printf("💾 Artikel in DB gespeichert: %s", article.Title)
+		}
+
 	}
 }

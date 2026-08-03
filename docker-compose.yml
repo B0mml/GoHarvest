@@ -4,21 +4,18 @@ services:
     ports:
       - "5672:5672"
       - "15672:15672"
-      - "15692:15692"
 
-  scraper:
-    build:
-      context: .
-      dockerfile: Dockerfile.scraper
-    depends_on:
-      - rabbitmq
-
-  worker:
-    build:
-      context: .
-      dockerfile: Dockerfile.worker
-    depends_on:
-      - rabbitmq
+  postgres:
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: itemharvester
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
 
   prometheus:
     image: prom/prometheus
@@ -31,5 +28,27 @@ services:
     image: grafana/grafana
     ports:
       - "3000:3000"
+
+  scraper:
+    build:
+      context: .
+      dockerfile: Dockerfile.scraper 
     depends_on:
-      - prometheus
+      - rabbitmq
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    depends_on:
+      - rabbitmq
+      - postgres
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: user
+      DB_PASSWORD: password
+      DB_NAME: itemharvester
+
+volumes:
+  postgres_data:
