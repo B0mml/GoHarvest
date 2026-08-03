@@ -6,7 +6,6 @@ import (
 	"log"
 	"time"
 
-	"github.com/gocolly/colly/v2"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
@@ -16,85 +15,60 @@ type Article struct {
 }
 
 func main() {
-	conn, err := amqp.Dial("amqp://guest:guest@rabbitmq:5672/")
+	var conn *amqp.Connection
+	var err error
 
-	if err != nil {
-		log.Fatalf("Error connecting to RabbitMQ: %s", err)
+	for range 10 {
+		conn, err = amqp.Dial("amqp://guest:guest@rabbitmq:5672/")
+		if err == nil {
+			break
+		}
+		log.Println("Warte auf RabbitMQ...")
+		time.Sleep(2 * time.Second)
 	}
-
+	if err != nil {
+		log.Fatalf("Konnte nicht mit RabbitMQ verbinden: %v", err)
+	}
 	defer conn.Close()
 
 	ch, err := conn.Channel()
 	if err != nil {
-		log.Fatalf("Error creating channel: %s", err)
+		log.Fatal(err)
 	}
-
 	defer ch.Close()
 
-	q, err := ch.QueueDeclare(
-		"hn_articles", // Name der Queue
-		false,         // durable
-		false,         // delete when unused
-		false,         // exclusive
-		false,         // no-wait
-		nil,           // arguments
-	)
-
+	q, err := ch.QueueDeclare("hn_articles", false, false, false, false, nil)
 	if err != nil {
-		log.Fatalf("Error declaring queue: %s", err)
+		log.Fatal(err)
 	}
 
-	fmt.Println("Success connecting to RabbitMQ")
+	log.Println("Start Test")
 
-	for {
-		c := colly.NewCollector(
-			colly.AllowedDomains("news.ycombinator.com"),
+	for i := 1; i <= 5000; i++ {
+		article := Article{
+			Title: fmt.Sprintf("Test Artikel #%d", i),
+			URL:   fmt.Sprintf("https://example.com/test-%d", i),
+		}
+
+		body, _ := json.Marshal(article)
+
+		err := ch.Publish(
+			"",     // exchange
+			q.Name, // routing key
+			false,  // mandatory
+			false,  // immediate
+			amqp.Publishing{
+				ContentType: "application/json",
+				Body:        body,
+			},
 		)
+		if err != nil {
+			log.Printf("Fehler beim Senden: %v", err)
+		}
 
-		var articles []Article
-
-		c.OnHTML("tr.athing span.titleline > a", func(e *colly.HTMLElement) {
-			article := Article{
-				Title: e.Text,
-				URL:   e.Attr("href"),
-			}
-			articles = append(articles, article)
-		})
-
-		c.OnScraped(func(r *colly.Response) {
-			fmt.Printf("Done scraping, %d articles found.\n", len(articles))
-
-			for i, article := range articles {
-				if i >= 5 {
-					break
-				}
-
-				body, err := json.Marshal(article)
-				if err != nil {
-					log.Println("JSON-Error:", err)
-					continue
-				}
-
-				err = ch.Publish(
-					"",     // exchange
-					q.Name, // routing key
-					false,  // mandatory
-					false,  // immediate
-					amqp.Publishing{
-						ContentType: "application/json",
-						Body:        body,
-					},
-				)
-				if err != nil {
-					log.Println("Error sending to RabbitMQ:", err)
-				} else {
-					fmt.Printf("--> Article sent: %s\n", article.Title)
-				}
-			}
-		})
-
-		fmt.Println("Starte Scraping...")
-		c.Visit("https://news.ycombinator.com/")
-		time.Sleep(30 * time.Second)
+		// short sleep for testing
+		time.Sleep(1 * time.Millisecond)
 	}
+
+	log.Println("Done!")
 }
