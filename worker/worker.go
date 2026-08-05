@@ -13,8 +13,9 @@ import (
 )
 
 type Article struct {
-	Title string `json:"title"`
-	URL   string `json:"url"`
+	Title string  `json:"title"`
+	URL   string  `json:"url"`
+	PRICE float64 `json:price`
 }
 
 func failOnError(err error, msg string) {
@@ -51,16 +52,27 @@ func main() {
 
 	log.Println("Successfully connected to Database!")
 
-	createTableSQL := `
-	CREATE TABLE IF NOT EXISTS articles (
+	createItemsTable := `
+	CREATE TABLE IF NOT EXISTS items (
 		id SERIAL PRIMARY KEY,
 		title TEXT NOT NULL,
 		url TEXT UNIQUE NOT NULL,
 		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 	);`
-	_, err = db.Exec(createTableSQL)
-	if err != nil {
-		log.Fatalf("Error creating table: %v", err)
+
+	createHistoryTable := `
+	CREATE TABLE IF NOT EXISTS price_history (
+		id SERIAL PRIMARY KEY,
+		item_id INT NOT NULL REFERENCES items(id) ON DELETE CASCADE,
+		price NUMERIC(10, 2) NOT NULL,
+		recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+	);`
+
+	if _, err = db.Exec(createItemsTable); err != nil {
+		log.Fatalf("Error creating items table: %v", err)
+	}
+	if _, err = db.Exec(createHistoryTable); err != nil {
+		log.Fatalf("Error creating price_history table: %v", err)
 	}
 
 	// Connecting to rabbitmq
@@ -77,22 +89,10 @@ func main() {
 	failOnError(err, "Failed to connect to RabbitMQ")
 	defer rabbitCon.Close()
 
-	ch, err := rabbitCon.Channel()
-	failOnError(err, "Failed to open a channel")
-	defer ch.Close()
-
-	q, err := ch.QueueDeclare(
-		"hn_articles",
-		false, false, false, false, nil,
-	)
+	q, err := ch.QueueDeclare("price_items", false, false, false, false, nil)
 	failOnError(err, "Error at Queue")
 
-	msgs, err := ch.Consume(
-		q.Name, // Queue Name
-		"",     // Consumer Name
-		true,   // Auto-Ack
-		false, false, false, nil,
-	)
+	msgs, err := ch.Consume(q.Name, "", true, false, false, false, nil)
 	failOnError(err, "Error at Consume")
 
 	fmt.Println(" [*] Worker is waitng for msgs...")
@@ -110,7 +110,7 @@ func main() {
 		if err != nil {
 			log.Printf("Fehler beim Speichern in Postgres: %v", err)
 		} else {
-			log.Printf("💾 Artikel in DB gespeichert: %s", article.Title)
+			log.Printf("Artikel in DB gespeichert: %s", article.Title)
 		}
 
 	}

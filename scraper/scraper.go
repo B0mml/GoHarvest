@@ -10,8 +10,9 @@ import (
 )
 
 type Article struct {
-	Title string `json:"title"`
-	URL   string `json:"url"`
+	Title string  `json:"title"`
+	URL   string  `json:"url"`
+	PRICE float64 `json:price`
 }
 
 func main() {
