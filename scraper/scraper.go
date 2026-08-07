@@ -10,9 +10,10 @@ import (
 )
 
 type Article struct {
-	Title string  `json:"title"`
-	URL   string  `json:"url"`
-	Price float64 `json:"price"`
+	UserID int     `json:"user_id"`
+	Title  string  `json:"title"`
+	URL    string  `json:"url"`
+	Price  float64 `json:"price"`
 }
 
 func connectRabbitMQ(amqpURL string, maxRetries int, retryDelay time.Duration) (*amqp.Connection, error) {
@@ -34,9 +35,10 @@ func publishArticles(ch *amqp.Channel, queueName string, count int) error {
 
 	for i := 1; i <= count; i++ {
 		article := Article{
-			Title: fmt.Sprintf("Test article #%d", i),
-			URL:   fmt.Sprintf("https://example.com/test-%d", i),
-			Price: 19.99 + float64(i),
+			UserID: (i % 3) + 1, // Distribute across test user IDs 1, 2, 3
+			Title:  fmt.Sprintf("Test article #%d", i),
+			URL:    fmt.Sprintf("https://example.com/test-%d", i),
+			Price:  19.99 + float64(i),
 		}
 
 		body, err := json.Marshal(article)

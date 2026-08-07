@@ -13,9 +13,10 @@ import (
 )
 
 type Article struct {
-	Title string  `json:"title"`
-	URL   string  `json:"url"`
-	Price float64 `json:"price"`
+	UserID int     `json:"user_id"`
+	Title  string  `json:"title"`
+	URL    string  `json:"url"`
+	Price  float64 `json:"price"`
 }
 
 func connectDB(connStr string, maxRetries int, retryDelay time.Duration) (*sql.DB, error) {
@@ -36,12 +37,21 @@ func connectDB(connStr string, maxRetries int, retryDelay time.Duration) (*sql.D
 }
 
 func initSchema(db *sql.DB) error {
+	createUsersTable := `
+	CREATE TABLE IF NOT EXISTS users (
+		id SERIAL PRIMARY KEY,
+		email TEXT UNIQUE NOT NULL,
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+	);`
+
 	createItemsTable := `
 	CREATE TABLE IF NOT EXISTS items (
 		id SERIAL PRIMARY KEY,
+		user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
 		title TEXT NOT NULL,
-		url TEXT UNIQUE NOT NULL,
-		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		url TEXT NOT NULL,
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		CONSTRAINT unique_user_url UNIQUE (user_id, url)
 	);`
 
 	createHistoryTable := `
@@ -52,11 +62,24 @@ func initSchema(db *sql.DB) error {
 		recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 	);`
 
+	seedUsers := `
+	INSERT INTO users (id, email) VALUES 
+		(1, 'user1@example.com'),
+		(2, 'user2@example.com'),
+		(3, 'user3@example.com')
+	ON CONFLICT (id) DO NOTHING;`
+
+	if _, err := db.Exec(createUsersTable); err != nil {
+		return fmt.Errorf("error creating users table: %w", err)
+	}
 	if _, err := db.Exec(createItemsTable); err != nil {
 		return fmt.Errorf("error creating items table: %w", err)
 	}
 	if _, err := db.Exec(createHistoryTable); err != nil {
 		return fmt.Errorf("error creating price_history table: %w", err)
+	}
+	if _, err := db.Exec(seedUsers); err != nil {
+		return fmt.Errorf("error seeding users: %w", err)
 	}
 	return nil
 }
@@ -76,14 +99,19 @@ func connectRabbitMQ(amqpURL string, maxRetries int, retryDelay time.Duration) (
 }
 
 func saveArticle(db *sql.DB, article Article) error {
+	userID := article.UserID
+	if userID == 0 {
+		userID = 1
+	}
+
 	var itemID int
 	insertItemSQL := `
-		INSERT INTO items (title, url) 
-		VALUES ($1, $2) 
-		ON CONFLICT (url) DO UPDATE SET title = EXCLUDED.title 
+		INSERT INTO items (user_id, title, url) 
+		VALUES ($1, $2, $3) 
+		ON CONFLICT (user_id, url) DO UPDATE SET title = EXCLUDED.title 
 		RETURNING id;`
 
-	err := db.QueryRow(insertItemSQL, article.Title, article.URL).Scan(&itemID)
+	err := db.QueryRow(insertItemSQL, userID, article.Title, article.URL).Scan(&itemID)
 	if err != nil {
 		return fmt.Errorf("failed to upsert item: %w", err)
 	}
