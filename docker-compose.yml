@@ -50,5 +50,21 @@ services:
       DB_PASSWORD: password
       DB_NAME: itemharvester
 
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile.dashboard
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+      - rabbitmq
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: user
+      DB_PASSWORD: password
+      DB_NAME: itemharvester
+
 volumes:
   postgres_data:

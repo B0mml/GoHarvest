@@ -6,15 +6,9 @@ import (
 	"log"
 	"time"
 
+	"github.com/Bommel48/go-scraper-notifier/pkg/models"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
-
-type Article struct {
-	UserID int     `json:"user_id"`
-	Title  string  `json:"title"`
-	URL    string  `json:"url"`
-	Price  float64 `json:"price"`
-}
 
 func connectRabbitMQ(amqpURL string, maxRetries int, retryDelay time.Duration) (*amqp.Connection, error) {
 	var conn *amqp.Connection
@@ -34,7 +28,7 @@ func publishArticles(ch *amqp.Channel, queueName string, count int) error {
 	log.Println("Starting test...")
 
 	for i := 1; i <= count; i++ {
-		article := Article{
+		article := models.Article{
 			UserID: (i % 3) + 1, // Distribute across test user IDs 1, 2, 3
 			Title:  fmt.Sprintf("Test article #%d", i),
 			URL:    fmt.Sprintf("https://example.com/test-%d", i),
@@ -92,4 +86,3 @@ func main() {
 		log.Fatalf("Publish error: %v", err)
 	}
 }
-

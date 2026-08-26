@@ -8,16 +8,10 @@ import (
 	"os"
 	"time"
 
+	"github.com/Bommel48/go-scraper-notifier/pkg/models"
 	_ "github.com/lib/pq"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
-
-type Article struct {
-	UserID int     `json:"user_id"`
-	Title  string  `json:"title"`
-	URL    string  `json:"url"`
-	Price  float64 `json:"price"`
-}
 
 func connectDB(connStr string, maxRetries int, retryDelay time.Duration) (*sql.DB, error) {
 	var db *sql.DB
@@ -51,6 +45,7 @@ func initSchema(db *sql.DB) error {
 		title TEXT NOT NULL,
 		url TEXT NOT NULL,
 		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		last_checked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 		CONSTRAINT unique_user_url UNIQUE (user_id, url)
 	);`
 
@@ -98,7 +93,7 @@ func connectRabbitMQ(amqpURL string, maxRetries int, retryDelay time.Duration) (
 	return nil, fmt.Errorf("could not connect to RabbitMQ after %d attempts: %w", maxRetries, err)
 }
 
-func saveArticle(db *sql.DB, article Article) error {
+func saveArticle(db *sql.DB, article models.Article) error {
 	userID := article.UserID
 	if userID == 0 {
 		userID = 1
@@ -126,7 +121,7 @@ func saveArticle(db *sql.DB, article Article) error {
 }
 
 func processDelivery(db *sql.DB, d amqp.Delivery) {
-	var article Article
+	var article models.Article
 	err := json.Unmarshal(d.Body, &article)
 	if err != nil {
 		log.Printf("Error unpacking json: %v", err)
@@ -192,4 +187,3 @@ func main() {
 		processDelivery(db, d)
 	}
 }
-
