@@ -3,11 +3,13 @@ WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -o dashboard dashboard/main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -o /app/bin/dashboard ./dashboard
 
 FROM alpine:latest
 WORKDIR /app
-COPY --from=builder /app/dashboard .
+COPY --from=builder /app/bin/dashboard .
+COPY --from=builder /app/dashboard/templates ./templates
 CMD ["./dashboard"]
+
 
 
