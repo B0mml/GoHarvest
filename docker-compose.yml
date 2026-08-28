@@ -36,6 +36,8 @@ services:
       dockerfile: Dockerfile.scraper 
     depends_on:
       - rabbitmq
+    profiles: ["seed"]
+ 
 
   worker:
     build:
@@ -50,6 +52,7 @@ services:
       DB_USER: user
       DB_PASSWORD: password
       DB_NAME: itemharvester
+      WORKERS: 4
 
   dashboard:
     build:

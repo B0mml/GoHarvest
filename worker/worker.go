@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
+	"sync"
 	"time"
 
 	dbpkg "github.com/Bommel48/go-scraper-notifier/pkg/db"
@@ -59,7 +61,7 @@ func saveArticle(db *sql.DB, article models.Article) error {
 	return nil
 }
 
-func processDelivery(db *sql.DB, d amqp.Delivery) {
+func processDelivery(db *sql.DB, d amqp.Delivery, id int) {
 	var article models.Article
 	err := json.Unmarshal(d.Body, &article)
 	if err != nil {
@@ -74,11 +76,14 @@ func processDelivery(db *sql.DB, d amqp.Delivery) {
 		return
 	}
 
-	log.Printf("Article & price saved: %s (%.2f €)", article.Title, article.Price)
+	log.Printf("Article & price saved: %s (%.2f €) by worker %d", article.Title, article.Price, id)
 	d.Ack(false)
 }
 
 func main() {
+
+	var wg sync.WaitGroup
+
 	dbHost := os.Getenv("DB_HOST")
 	if dbHost == "" {
 		dbHost = "localhost"
@@ -111,7 +116,25 @@ func main() {
 
 	log.Println(" [*] Worker is waiting for msgs...")
 
-	for d := range msgs {
-		processDelivery(db, d)
+	workersStr := os.Getenv("WORKERS")
+	numWorkers := 4
+	if workersStr != "" && workersStr != "0" {
+		n, err := strconv.Atoi(workersStr)
+		if err != nil {
+			log.Fatalf("Error parsing WORKERS %q: %v", workersStr, err)
+		}
+		numWorkers = n
 	}
+	for i := 0; i < numWorkers; i++ {
+		wg.Add(1)
+		go func(id int) {
+			defer wg.Done()
+			for d := range msgs {
+				processDelivery(db, d, id)
+			}
+		}(i)
+	}
+
+	wg.Wait()
+
 }

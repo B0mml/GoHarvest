@@ -15,7 +15,7 @@ func publishArticles(ch *amqp.Channel, queueName string, count int) error {
 
 	for i := 1; i <= count; i++ {
 		article := models.Article{
-			UserID: (i % 3) + 1, // Distribute across test user IDs 1, 2, 3
+			UserID: (i % 3) + 1,
 			Title:  fmt.Sprintf("Test article #%d", i),
 			URL:    fmt.Sprintf("https://example.com/test-%d", i),
 			Price:  19.99 + float64(i),
