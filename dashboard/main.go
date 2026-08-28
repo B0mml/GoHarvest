@@ -17,6 +17,8 @@ import (
 	"time"
 
 	dbpkg "github.com/Bommel48/go-scraper-notifier/pkg/db"
+	"github.com/Bommel48/go-scraper-notifier/pkg/models"
+	rbmq "github.com/Bommel48/go-scraper-notifier/pkg/rabbitmq"
 )
 
 var (
@@ -25,9 +27,9 @@ var (
 )
 
 func initTemplates() {
-	baseDir := "dashboard/templates"
-	if _, err := os.Stat(baseDir); os.IsNotExist(err) {
-		baseDir = "templates"
+	baseDir := "templates"
+	if _, err := os.Stat(filepath.Join("dashboard", "templates", "layout.go.html")); err == nil {
+		baseDir = "dashboard/templates"
 	}
 
 	layoutPath := filepath.Join(baseDir, "layout.go.html")
@@ -52,6 +54,16 @@ func main() {
 	}
 
 	log.Println("Successfully connected to Database!")
+
+	amqpURL := os.Getenv("AMQP_URL")
+	if amqpURL == "" {
+		amqpURL = "amqp://guest:guest@rabbitmq:5672/"
+	}
+	ch, err := rbmq.Connect(amqpURL, 10, 2*time.Second)
+	if err != nil {
+		log.Fatalf("RabbitMQ connection error: %v", err)
+	}
+	defer ch.Close()
 
 	mux := http.NewServeMux()
 
@@ -89,6 +101,16 @@ func main() {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 
 			return
+		}
+
+		article := models.Article{
+			UserID: 1,
+			Title:  title,
+			URL:    url,
+			Price:  19.99 + float64(id),
+		}
+		if err := rbmq.Publish(ch, rbmq.QueueName, article); err != nil {
+			log.Printf("Error publishing item %d to RabbitMQ: %v", id, err)
 		}
 
 		indexTmpl.ExecuteTemplate(w, "item-row", item)

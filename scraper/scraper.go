@@ -1,28 +1,14 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 	"time"
 
 	"github.com/Bommel48/go-scraper-notifier/pkg/models"
+	rbmq "github.com/Bommel48/go-scraper-notifier/pkg/rabbitmq"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
-
-func connectRabbitMQ(amqpURL string, maxRetries int, retryDelay time.Duration) (*amqp.Connection, error) {
-	var conn *amqp.Connection
-	var err error
-	for i := 0; i < maxRetries; i++ {
-		conn, err = amqp.Dial(amqpURL)
-		if err == nil {
-			return conn, nil
-		}
-		log.Printf("Waiting for RabbitMQ (attempt %d/%d)...", i+1, maxRetries)
-		time.Sleep(retryDelay)
-	}
-	return nil, fmt.Errorf("could not connect to RabbitMQ after %d attempts: %w", maxRetries, err)
-}
 
 func publishArticles(ch *amqp.Channel, queueName string, count int) error {
 	log.Println("Starting test...")
@@ -35,22 +21,7 @@ func publishArticles(ch *amqp.Channel, queueName string, count int) error {
 			Price:  19.99 + float64(i),
 		}
 
-		body, err := json.Marshal(article)
-		if err != nil {
-			return fmt.Errorf("error marshaling article #%d: %w", i, err)
-		}
-
-		err = ch.Publish(
-			"",        // exchange
-			queueName, // routing key
-			false,     // mandatory
-			false,     // immediate
-			amqp.Publishing{
-				ContentType: "application/json",
-				Body:        body,
-			},
-		)
-		if err != nil {
+		if err := rbmq.Publish(ch, queueName, article); err != nil {
 			log.Printf("Error sending article #%d: %v", i, err)
 		}
 
@@ -63,26 +34,14 @@ func publishArticles(ch *amqp.Channel, queueName string, count int) error {
 
 func main() {
 	amqpURL := "amqp://guest:guest@rabbitmq:5672/"
-	queueName := "price_items"
 
-	conn, err := connectRabbitMQ(amqpURL, 10, 2*time.Second)
+	ch, err := rbmq.Connect(amqpURL, 10, 2*time.Second)
 	if err != nil {
 		log.Fatalf("RabbitMQ connection failure: %v", err)
 	}
-	defer conn.Close()
-
-	ch, err := conn.Channel()
-	if err != nil {
-		log.Fatalf("Failed to open channel: %v", err)
-	}
 	defer ch.Close()
 
-	q, err := ch.QueueDeclare(queueName, false, false, false, false, nil)
-	if err != nil {
-		log.Fatalf("Failed to declare queue: %v", err)
-	}
-
-	if err := publishArticles(ch, q.Name, 5000); err != nil {
+	if err := publishArticles(ch, rbmq.QueueName, 5000); err != nil {
 		log.Fatalf("Publish error: %v", err)
 	}
 }

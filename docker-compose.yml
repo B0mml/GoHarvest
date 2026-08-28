@@ -66,6 +66,7 @@ services:
       DB_USER: user
       DB_PASSWORD: password
       DB_NAME: itemharvester
+      AMQP_URL: amqp://guest:guest@rabbitmq:5672/
 
 volumes:
   postgres_data:

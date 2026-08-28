@@ -10,6 +10,7 @@ import (
 
 	dbpkg "github.com/Bommel48/go-scraper-notifier/pkg/db"
 	"github.com/Bommel48/go-scraper-notifier/pkg/models"
+	rbmq "github.com/Bommel48/go-scraper-notifier/pkg/rabbitmq"
 	_ "github.com/lib/pq"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
@@ -29,20 +30,6 @@ func connectDB(connStr string, maxRetries int, retryDelay time.Duration) (*sql.D
 		time.Sleep(retryDelay)
 	}
 	return nil, fmt.Errorf("could not connect to Postgres after %d attempts: %w", maxRetries, err)
-}
-
-func connectRabbitMQ(amqpURL string, maxRetries int, retryDelay time.Duration) (*amqp.Connection, error) {
-	var conn *amqp.Connection
-	var err error
-	for i := 0; i < maxRetries; i++ {
-		conn, err = amqp.Dial(amqpURL)
-		if err == nil {
-			return conn, nil
-		}
-		log.Printf("Waiting for RabbitMQ (attempt %d/%d)...", i+1, maxRetries)
-		time.Sleep(retryDelay)
-	}
-	return nil, fmt.Errorf("could not connect to RabbitMQ after %d attempts: %w", maxRetries, err)
 }
 
 func saveArticle(db *sql.DB, article models.Article) error {
@@ -111,24 +98,13 @@ func main() {
 		log.Fatalf("Schema setup error: %v", err)
 	}
 
-	rabbitCon, err := connectRabbitMQ(amqpURL, 10, 2*time.Second)
+	ch, err := rbmq.Connect(amqpURL, 10, 2*time.Second)
 	if err != nil {
 		log.Fatalf("RabbitMQ connection error: %v", err)
 	}
-	defer rabbitCon.Close()
-
-	ch, err := rabbitCon.Channel()
-	if err != nil {
-		log.Fatalf("Failed to open channel: %v", err)
-	}
 	defer ch.Close()
 
-	q, err := ch.QueueDeclare("price_items", false, false, false, false, nil)
-	if err != nil {
-		log.Fatalf("Error declaring Queue: %v", err)
-	}
-
-	msgs, err := ch.Consume(q.Name, "", false, false, false, false, nil)
+	msgs, err := ch.Consume(rbmq.QueueName, "", false, false, false, false, nil)
 	if err != nil {
 		log.Fatalf("Error at Consume: %v", err)
 	}
