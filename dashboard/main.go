@@ -9,6 +9,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 )
 
@@ -43,7 +44,7 @@ func main() {
 			return
 		}
 
-		tmpl.ExecuteTemplate(w, "layout", map[string]any{"items": items})
+		tmpl.ExecuteTemplate(w, "layout", map[string]any{"Items": items})
 	})
 
 	mux.HandleFunc("POST /items", func(w http.ResponseWriter, r *http.Request) {
@@ -51,12 +52,59 @@ func main() {
 
 		url := r.FormValue("url")
 
-		if title == " " || url == "" {
+		if title == "" || url == "" {
 			http.Error(w, "Title and URL required", http.StatusBadRequest)
 
 			return
 		}
 
 		id, err := insertItem(db, title, url)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+
+			return
+		}
+
+		item, err := getItem(db, id)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+
+			return
+		}
+
+		tmpl.ExecuteTemplate(w, "item-row", item)
+	})
+
+	mux.HandleFunc("POST /items/{id}/delete", func(w http.ResponseWriter, r *http.Request) {
+		idStr := r.PathValue("id")
+		id, err := strconv.Atoi(idStr)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		err = deleteItem(db, id)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	})
+
+	mux.HandleFunc("GET /items/{id}", func(w http.ResponseWriter, r *http.Request) {
+		idStr := r.PathValue("id")
+		id, err := strconv.Atoi(idStr)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		item, err := getItem(db, id)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+
+			return
+		}
+
+		tmpl.ExecuteTemplate(w, "layout", map[string]any{"Item": item})
 	})
 }

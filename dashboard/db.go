@@ -27,7 +27,6 @@ type Item struct {
 func connectDB(maxRetries int, retryDelay time.Duration) (*sql.DB, error) {
 	dbHost := os.Getenv("DB_HOST")
 	if dbHost == "" {
-
 		dbHost = "localhost"
 	}
 	dbPort := os.Getenv("DB_PORT")
