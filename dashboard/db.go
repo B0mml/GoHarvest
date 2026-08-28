@@ -68,18 +68,17 @@ func connectDB(maxRetries int, retryDelay time.Duration) (*sql.DB, error) {
 	return nil, fmt.Errorf("could not connect to Postgres after %d attempts: %w", maxRetries, err)
 }
 
-// // returns all items with their latest price (SQL JOIN on items + price_history)
 func listItems(db *sql.DB) ([]Item, error) {
 	rows, err := db.Query(`
 	SELECT DISTINCT ON (i.id)
         i.id,
         i.title,
         i.url,
-        p.price,
-        p.recorded_at
+        COALESCE(p.price, 0),
+        COALESCE(p.recorded_at, i.created_at)
     FROM items i
-    JOIN price_history p ON i.id = p.item_id
-    ORDER BY i.id, p.recorded_at DESC;`)
+    LEFT JOIN price_history p ON i.id = p.item_id
+    ORDER BY i.id, p.recorded_at DESC NULLS LAST;`)
 	if err != nil {
 		return nil, fmt.Errorf("query error: %w", err)
 	}

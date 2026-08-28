@@ -6,22 +6,37 @@
 package main
 
 import (
+	"database/sql"
+	"errors"
 	"html/template"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 	"time"
+
+	dbpkg "github.com/Bommel48/go-scraper-notifier/pkg/db"
 )
 
-var tmpl *template.Template
+var (
+	indexTmpl *template.Template
+	itemTmpl  *template.Template
+)
 
 func initTemplates() {
-	tmpl = template.Must(template.ParseGlob("dashboard/templates/*go.html"))
-}
+	baseDir := "dashboard/templates"
+	if _, err := os.Stat(baseDir); os.IsNotExist(err) {
+		baseDir = "templates"
+	}
 
-// func handler(w http.ResponseWriter, r *http.Request) {
-// 	fmt.Fprintf(w, "Hello World! path: %s", r.URL.Path[1:])
-// }
+	layoutPath := filepath.Join(baseDir, "layout.go.html")
+	indexPath := filepath.Join(baseDir, "index.go.html")
+	itemPath := filepath.Join(baseDir, "item.go.html")
+
+	indexTmpl = template.Must(template.ParseFiles(layoutPath, indexPath))
+	itemTmpl = template.Must(template.ParseFiles(layoutPath, itemPath))
+}
 
 func main() {
 	initTemplates()
@@ -31,6 +46,10 @@ func main() {
 		log.Fatalf("Database connection error: %v", err)
 	}
 	defer db.Close()
+
+	if err := dbpkg.InitSchema(db); err != nil {
+		log.Fatalf("Schema setup error: %v", err)
+	}
 
 	log.Println("Successfully connected to Database!")
 
@@ -44,7 +63,7 @@ func main() {
 			return
 		}
 
-		tmpl.ExecuteTemplate(w, "layout", map[string]any{"Items": items})
+		indexTmpl.ExecuteTemplate(w, "layout", map[string]any{"Items": items})
 	})
 
 	mux.HandleFunc("POST /items", func(w http.ResponseWriter, r *http.Request) {
@@ -72,7 +91,7 @@ func main() {
 			return
 		}
 
-		tmpl.ExecuteTemplate(w, "item-row", item)
+		indexTmpl.ExecuteTemplate(w, "item-row", item)
 	})
 
 	mux.HandleFunc("POST /items/{id}/delete", func(w http.ResponseWriter, r *http.Request) {
@@ -100,11 +119,17 @@ func main() {
 
 		item, err := getItem(db, id)
 		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				http.Error(w, "Item not found", http.StatusNotFound)
+				return
+			}
 			http.Error(w, err.Error(), http.StatusInternalServerError)
-
 			return
 		}
 
-		tmpl.ExecuteTemplate(w, "layout", map[string]any{"Item": item})
+		itemTmpl.ExecuteTemplate(w, "layout", map[string]any{"Item": item})
 	})
+
+	log.Println("Dashboard running on :8080")
+	log.Fatal(http.ListenAndServe(":8080", mux))
 }

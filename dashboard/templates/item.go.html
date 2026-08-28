@@ -1,3 +1,50 @@
-<!-- - Item details (title, URL) -->
-<!-- - Chart.js line chart showing price_history (prices on Y-axis, dates on X-axis) -->
-<!-- - Back link to / -->
+{{define "content"}}
+<div class="bg-white p-6 rounded-lg shadow-sm border border-gray-100 mb-8">
+    <a href="/" class="text-indigo-600 hover:underline text-sm">&larr; Back to all items</a>
+
+    <div class="mt-4">
+        <h2 class="text-2xl font-bold text-gray-900">{{.Item.Title}}</h2>
+        <a href="{{.Item.URL}}" target="_blank" class="text-blue-500 hover:underline text-sm break-all">{{.Item.URL}}</a>
+    </div>
+
+    <div class="mt-6">
+        <h3 class="text-lg font-semibold mb-4">Price History</h3>
+        {{if .Item.PriceHistory}}
+            <canvas id="priceChart" class="w-full" style="max-height: 300px;"></canvas>
+        {{else}}
+            <p class="text-gray-400 text-sm">No price history yet. Add a scraper to start tracking prices.</p>
+        {{end}}
+    </div>
+</div>
+
+{{if .Item.PriceHistory}}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+const labels = [{{range .Item.PriceHistory}}"{{.RecordedAt.Format "2006-01-02"}}",{{end}}];
+const prices = [{{range .Item.PriceHistory}}{{.Price}},{{end}}];
+
+new Chart(document.getElementById('priceChart'), {
+    type: 'line',
+    data: {
+        labels: labels,
+        datasets: [{
+            label: 'Price (€)',
+            data: prices,
+            borderColor: 'rgb(79, 70, 229)',
+            backgroundColor: 'rgba(79, 70, 229, 0.1)',
+            fill: true,
+            tension: 0.3
+        }]
+    },
+    options: {
+        responsive: true,
+        scales: {
+            y: {
+                beginAtZero: false
+            }
+        }
+    }
+});
+</script>
+{{end}}
+{{end}}
