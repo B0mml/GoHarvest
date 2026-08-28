@@ -1,0 +1,26 @@
+{{define "layout"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GoHarvest Dashboard</title>
+    <!-- Tailwind CSS for clean styling without setup -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- HTMX library -->
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+</head>
+<body class="bg-gray-50 text-gray-900 min-h-screen p-8">
+    <div class="max-w-5xl mx-auto">
+        <header class="mb-8 border-b pb-4 flex justify-between items-center">
+            <h1 class="text-3xl font-bold text-indigo-600">GoHarvest</h1>
+            <span class="text-sm text-gray-500">Live Item Monitor</span>
+        </header>
+
+        <main>
+            {{template "content" .}}
+        </main>
+    </div>
+</body>
+</html>
+{{end}}
