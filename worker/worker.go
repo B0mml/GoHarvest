@@ -81,7 +81,6 @@ func processDelivery(db *sql.DB, d amqp.Delivery, id int) {
 }
 
 func main() {
-
 	var wg sync.WaitGroup
 
 	dbHost := os.Getenv("DB_HOST")
@@ -136,5 +135,4 @@ func main() {
 	}
 
 	wg.Wait()
-
 }

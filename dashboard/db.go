@@ -78,7 +78,7 @@ func listItems(db *sql.DB) ([]Item, error) {
         COALESCE(p.recorded_at, i.created_at)
     FROM items i
     LEFT JOIN price_history p ON i.id = p.item_id
-    ORDER BY i.id, p.recorded_at DESC NULLS LAST;`)
+    ORDER BY i.id DESC, p.recorded_at DESC NULLS LAST;`)
 	if err != nil {
 		return nil, fmt.Errorf("query error: %w", err)
 	}

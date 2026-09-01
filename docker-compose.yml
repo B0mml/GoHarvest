@@ -36,8 +36,6 @@ services:
       dockerfile: Dockerfile.scraper 
     depends_on:
       - rabbitmq
-    # profiles: ["seed"]
- 
 
   worker:
     build:

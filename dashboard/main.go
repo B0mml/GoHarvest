@@ -1,8 +1,3 @@
-// Start HTTP Server on :8080
-// Connects to Postgres
-// Register routes: GET /, GET /items/{id}, POST /items, POST /items/{id}/delete
-// Parses templates once at startup
-
 package main
 
 import (
@@ -19,6 +14,7 @@ import (
 	dbpkg "github.com/Bommel48/go-scraper-notifier/pkg/db"
 	"github.com/Bommel48/go-scraper-notifier/pkg/models"
 	rbmq "github.com/Bommel48/go-scraper-notifier/pkg/rabbitmq"
+	"github.com/Bommel48/go-scraper-notifier/pkg/scraper"
 )
 
 var (
@@ -103,11 +99,18 @@ func main() {
 			return
 		}
 
+		price, err := scraper.ScrapePrice(url)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+
+			return
+		}
+
 		article := models.Article{
 			UserID: 1,
 			Title:  title,
 			URL:    url,
-			Price:  19.99 + float64(id),
+			Price:  price,
 		}
 		if err := rbmq.Publish(ch, rbmq.QueueName, article); err != nil {
 			log.Printf("Error publishing item %d to RabbitMQ: %v", id, err)
