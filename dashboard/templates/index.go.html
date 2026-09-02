@@ -57,7 +57,7 @@
     </td>
     <td class="px-6 py-4 text-sm font-semibold text-green-600">
         {{if gt .Price 0.0}}
-            ${{printf "%.2f" .Price}}
+            {{printf "%.2f" .Price}}€
         {{else}}
             <span class="text-gray-400 font-normal">Pending</span>
         {{end}}
