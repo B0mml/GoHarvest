@@ -11,8 +11,6 @@ import (
 
 const QueueName = "price_items"
 
-// Connect opens a connection, a channel and declares the queue in one step.
-// It returns the channel; the caller closes it (and therefore the connection).
 func Connect(amqpURL string, maxRetries int, retryDelay time.Duration) (*amqp.Channel, error) {
 	var conn *amqp.Connection
 	var err error
@@ -43,7 +41,6 @@ func Connect(amqpURL string, maxRetries int, retryDelay time.Duration) (*amqp.Ch
 	return ch, nil
 }
 
-// Publish marshals v to JSON and publishes it to the given queue.
 func Publish(ch *amqp.Channel, queueName string, v any) error {
 	body, err := json.Marshal(v)
 	if err != nil {

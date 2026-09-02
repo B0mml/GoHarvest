@@ -39,7 +39,7 @@ func initTemplates() {
 func main() {
 	initTemplates()
 
-	db, err := connectDB(10, 2*time.Second)
+	db, err := dbpkg.Connect(10, 2*time.Second)
 	if err != nil {
 		log.Fatalf("Database connection error: %v", err)
 	}

@@ -17,23 +17,6 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
-func connectDB(connStr string, maxRetries int, retryDelay time.Duration) (*sql.DB, error) {
-	var db *sql.DB
-	var err error
-	for i := 0; i < maxRetries; i++ {
-		db, err = sql.Open("postgres", connStr)
-		if err == nil {
-			err = db.Ping()
-			if err == nil {
-				return db, nil
-			}
-		}
-		log.Printf("Waiting for Postgres (attempt %d/%d)...", i+1, maxRetries)
-		time.Sleep(retryDelay)
-	}
-	return nil, fmt.Errorf("could not connect to Postgres after %d attempts: %w", maxRetries, err)
-}
-
 func saveArticle(db *sql.DB, article models.Article) error {
 	userID := article.UserID
 	if userID == 0 {
@@ -83,14 +66,9 @@ func processDelivery(db *sql.DB, d amqp.Delivery, id int) {
 func main() {
 	var wg sync.WaitGroup
 
-	dbHost := os.Getenv("DB_HOST")
-	if dbHost == "" {
-		dbHost = "localhost"
-	}
-	connStr := fmt.Sprintf("host=%s port=5432 user=user password=password dbname=itemharvester sslmode=disable", dbHost)
 	amqpURL := "amqp://guest:guest@rabbitmq:5672/"
 
-	db, err := connectDB(connStr, 10, 2*time.Second)
+	db, err := dbpkg.Connect(10, 2*time.Second)
 	if err != nil {
 		log.Fatalf("Database connection error: %v", err)
 	}

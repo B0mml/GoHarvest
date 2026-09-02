@@ -11,7 +11,7 @@ services:
     environment:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
-      POSTGRES_DB: itemharvester
+      POSTGRES_DB: GoHarvest
     ports:
       - "5432:5432"
     volumes:
@@ -41,7 +41,7 @@ services:
       DB_PORT: 5432
       DB_USER: user
       DB_PASSWORD: password
-      DB_NAME: itemharvester
+      DB_NAME: GoHarvest
 
   worker:
     build:
@@ -55,7 +55,7 @@ services:
       DB_PORT: 5432
       DB_USER: user
       DB_PASSWORD: password
-      DB_NAME: itemharvester
+      DB_NAME: GoHarvest
       WORKERS: 4
 
   dashboard:
@@ -72,7 +72,7 @@ services:
       DB_PORT: 5432
       DB_USER: user
       DB_PASSWORD: password
-      DB_NAME: itemharvester
+      DB_NAME: GoHarvest
       AMQP_URL: amqp://guest:guest@rabbitmq:5672/
 
 volumes:

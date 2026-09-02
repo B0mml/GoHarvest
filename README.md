@@ -52,7 +52,7 @@ Once running, the services will be accessible at:
 | Service | Address / URL | Description |
 |---|---|---|
 | RabbitMQ Management | `http://localhost:15672` | AMQP Dashboard (`guest` / `guest`) |
-| PostgreSQL | `localhost:5432` | Database (`itemharvester`) |
+| PostgreSQL | `localhost:5432` | Database (`GoHarvest`) |
 | Prometheus | `http://localhost:9090` | Metrics Collector |
 | Grafana | `http://localhost:3000` | Visualizations & Dashboards |
 
@@ -123,7 +123,7 @@ Services can be configured via environment variables set in `docker-compose.yml`
 | `DB_PORT` | `5432` | PostgreSQL port |
 | `DB_USER` | `user` | PostgreSQL username |
 | `DB_PASSWORD` | `password` | PostgreSQL password |
-| `DB_NAME` | `itemharvester` | Database name |
+| `DB_NAME` | `GoHarvest` | Database name |
 
 ---
 
