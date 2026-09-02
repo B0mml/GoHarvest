@@ -12,6 +12,8 @@ type Item struct {
 	Title        string
 	URL          string
 	Price        float64
+	StartPrice   float64
+	LowestPrice  float64
 	RecordedAt   time.Time
 	PriceHistory []PricePoint
 }

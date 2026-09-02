@@ -8,16 +8,28 @@ import (
 )
 
 func listItems(db *sql.DB) ([]models.Item, error) {
-	rows, err := db.Query(`
-	SELECT DISTINCT ON (i.id)
-        i.id,
-        i.title,
-        i.url,
-        COALESCE(p.price, 0),
-        COALESCE(p.recorded_at, i.created_at)
-    FROM items i
-    LEFT JOIN price_history p ON i.id = p.item_id
-    ORDER BY i.id DESC, p.recorded_at DESC NULLS LAST;`)
+	query := `
+	SELECT
+		i.id,
+		i.title,
+		i.url,
+		COALESCE(latest.price, 0) AS current_price,
+		COALESCE(first_p.price, 0) AS start_price,
+		COALESCE(min_p.price, 0) AS lowest_price,
+		COALESCE(latest.recorded_at, i.created_at) AS recorded_at
+	FROM items i
+	LEFT JOIN LATERAL (
+		SELECT price, recorded_at FROM price_history WHERE item_id = i.id ORDER BY recorded_at DESC, id DESC LIMIT 1
+	) latest ON true
+	LEFT JOIN LATERAL (
+		SELECT price FROM price_history WHERE item_id = i.id ORDER BY recorded_at ASC, id ASC LIMIT 1
+	) first_p ON true
+	LEFT JOIN (
+		SELECT item_id, MIN(price) AS price FROM price_history GROUP BY item_id
+	) min_p ON min_p.item_id = i.id
+	ORDER BY i.id DESC;`
+
+	rows, err := db.Query(query)
 	if err != nil {
 		return nil, fmt.Errorf("query error: %w", err)
 	}
@@ -26,7 +38,7 @@ func listItems(db *sql.DB) ([]models.Item, error) {
 	var items []models.Item
 	for rows.Next() {
 		var it models.Item
-		if err := rows.Scan(&it.ID, &it.Title, &it.URL, &it.Price, &it.RecordedAt); err != nil {
+		if err := rows.Scan(&it.ID, &it.Title, &it.URL, &it.Price, &it.StartPrice, &it.LowestPrice, &it.RecordedAt); err != nil {
 			return nil, fmt.Errorf("scan error: %w", err)
 		}
 		items = append(items, it)
@@ -62,6 +74,19 @@ func getItem(db *sql.DB, id int) (models.Item, error) {
 			return it, err
 		}
 		it.PriceHistory = append(it.PriceHistory, p)
+	}
+
+	if len(it.PriceHistory) > 0 {
+		it.StartPrice = it.PriceHistory[0].Price
+		it.Price = it.PriceHistory[len(it.PriceHistory)-1].Price
+		it.RecordedAt = it.PriceHistory[len(it.PriceHistory)-1].RecordedAt
+		lowest := it.PriceHistory[0].Price
+		for _, p := range it.PriceHistory {
+			if p.Price < lowest {
+				lowest = p.Price
+			}
+		}
+		it.LowestPrice = lowest
 	}
 
 	if err := rows.Err(); err != nil {
