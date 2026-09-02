@@ -9,8 +9,7 @@ import (
 	dbpkg "github.com/Bommel48/go-scraper-notifier/pkg/db"
 	models "github.com/Bommel48/go-scraper-notifier/pkg/models"
 
-	// rbmq "github.com/Bommel48/go-scraper-notifier/pkg/rabbitmq"
-	// amqp "github.com/rabbitmq/amqp091-go"
+	rbmq "github.com/Bommel48/go-scraper-notifier/pkg/rabbitmq"
 )
 
 func getOldItems(db *sql.DB) ([]models.Item, error) {
@@ -41,8 +40,18 @@ func getOldItems(db *sql.DB) ([]models.Item, error) {
 	return items, nil
 }
 
+func updateLastChecked(db *sql.DB, item models.Item) error {
+	_, err := db.Exec(`UPDATE items SET last_checked_at = NOW() WHERE id = $1`, item.ID)
+
+	if err != nil {
+		return fmt.Errorf("failed to update last checked item %d: %w", item.ID, err)
+	}
+
+	return nil
+}
+
 func main() {
-	// amqpURL := "amqp://guest:guest@rabbitmq:5672/"
+	amqpURL := "amqp://guest:guest@rabbitmq:5672/"
 
 	db, err := dbpkg.Connect(10, 2*time.Second)
 	if err != nil {
@@ -51,6 +60,12 @@ func main() {
 	defer db.Close()
 
 	log.Println("Successfully connected to Database!")
+
+	ch, err := rbmq.Connect(amqpURL, 10, 2*time.Second)
+	if err != nil {
+		log.Fatalf("RabbitMQ connection error: %v", err)
+	}
+	defer ch.Close()
 
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
@@ -63,7 +78,20 @@ func main() {
 		}
 
 		for _, item := range items {
+			scrapeJob := models.ScrapeJob{
+				ID:  item.ID,
+				URL: item.URL}
+
+			err := rbmq.Publish(ch, rbmq.QueueName, scrapeJob)
+			if err != nil {
+				log.Printf("Error publishing scrape job %d: %v", scrapeJob.ID, err)
+				continue
+			}
 			log.Printf("%s ready to refresh!\n", item.Title)
+
+			if err := updateLastChecked(db, item); err != nil {
+				log.Printf("Error updating last checked for item %d: %v", item.ID, err)
+			}
 		}
 	}
 }

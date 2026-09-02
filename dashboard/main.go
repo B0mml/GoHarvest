@@ -14,7 +14,6 @@ import (
 	dbpkg "github.com/Bommel48/go-scraper-notifier/pkg/db"
 	"github.com/Bommel48/go-scraper-notifier/pkg/models"
 	rbmq "github.com/Bommel48/go-scraper-notifier/pkg/rabbitmq"
-	"github.com/Bommel48/go-scraper-notifier/pkg/scraper"
 )
 
 var (
@@ -95,20 +94,11 @@ func main() {
 			return
 		}
 
-		price, err := scraper.ScrapePrice(url)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-
-			return
+		scrapeJob := models.ScrapeJob{
+			ID:  id,
+			URL: url,
 		}
-
-		article := models.Article{
-			UserID: 1,
-			Title:  title,
-			URL:    url,
-			Price:  price,
-		}
-		if err := rbmq.Publish(ch, rbmq.QueueName, article); err != nil {
+		if err := rbmq.Publish(ch, rbmq.QueueName, scrapeJob); err != nil {
 			log.Printf("Error publishing item %d to RabbitMQ: %v", id, err)
 		}
 

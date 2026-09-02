@@ -3,7 +3,6 @@ package main
 import (
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"log"
 	"os"
 	"strconv"
@@ -13,53 +12,34 @@ import (
 	dbpkg "github.com/Bommel48/go-scraper-notifier/pkg/db"
 	"github.com/Bommel48/go-scraper-notifier/pkg/models"
 	rbmq "github.com/Bommel48/go-scraper-notifier/pkg/rabbitmq"
+	"github.com/Bommel48/go-scraper-notifier/pkg/scraper"
 	_ "github.com/lib/pq"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
-func saveArticle(db *sql.DB, article models.Article) error {
-	userID := article.UserID
-	if userID == 0 {
-		userID = 1
-	}
-
-	var itemID int
-	insertItemSQL := `
-		INSERT INTO items (user_id, title, url) 
-		VALUES ($1, $2, $3) 
-		ON CONFLICT (user_id, url) DO UPDATE SET title = EXCLUDED.title 
-		RETURNING id;`
-
-	err := db.QueryRow(insertItemSQL, userID, article.Title, article.URL).Scan(&itemID)
-	if err != nil {
-		return fmt.Errorf("failed to upsert item: %w", err)
-	}
-
-	insertHistorySQL := `INSERT INTO price_history (item_id, price) VALUES ($1, $2);`
-	_, err = db.Exec(insertHistorySQL, itemID, article.Price)
-	if err != nil {
-		return fmt.Errorf("failed to insert price history: %w", err)
-	}
-
-	return nil
-}
-
 func processDelivery(db *sql.DB, d amqp.Delivery, id int) {
-	var article models.Article
-	err := json.Unmarshal(d.Body, &article)
+	var scrapeJob models.ScrapeJob
+	err := json.Unmarshal(d.Body, &scrapeJob)
 	if err != nil {
 		log.Printf("Error unpacking json: %v", err)
 		d.Nack(false, false)
 		return
 	}
 
-	if err := saveArticle(db, article); err != nil {
-		log.Printf("Error saving article: %v", err)
+	price, err := scraper.ScrapePrice(scrapeJob.URL)
+	if err != nil {
+		log.Printf("Error scraping %s: %v", scrapeJob.URL, err)
+		d.Nack(false, false)
+		return
+	}
+	query := `INSERT INTO price_history (item_id, price) VALUES ($1, $2);`
+	if _, err := db.Exec(query, scrapeJob.ID, price); err != nil {
+		log.Printf("Error saving price: %v", err)
 		d.Nack(false, true)
 		return
 	}
 
-	log.Printf("Article & price saved: %s (%.2f €) by worker %d", article.Title, article.Price, id)
+	log.Printf("Price saved: %.2f € for item %d by worker %d", price, scrapeJob.ID, id)
 	d.Ack(false)
 }
 
