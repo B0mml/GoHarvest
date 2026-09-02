@@ -8,6 +8,9 @@ import (
 
 	dbpkg "github.com/Bommel48/go-scraper-notifier/pkg/db"
 	models "github.com/Bommel48/go-scraper-notifier/pkg/models"
+
+	// rbmq "github.com/Bommel48/go-scraper-notifier/pkg/rabbitmq"
+	// amqp "github.com/rabbitmq/amqp091-go"
 )
 
 func getOldItems(db *sql.DB) ([]models.Item, error) {
@@ -39,6 +42,8 @@ func getOldItems(db *sql.DB) ([]models.Item, error) {
 }
 
 func main() {
+	// amqpURL := "amqp://guest:guest@rabbitmq:5672/"
+
 	db, err := dbpkg.Connect(10, 2*time.Second)
 	if err != nil {
 		log.Fatalf("Database connection error: %v", err)

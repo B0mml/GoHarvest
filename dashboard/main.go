@@ -45,10 +45,6 @@ func main() {
 	}
 	defer db.Close()
 
-	if err := dbpkg.InitSchema(db); err != nil {
-		log.Fatalf("Schema setup error: %v", err)
-	}
-
 	log.Println("Successfully connected to Database!")
 
 	amqpURL := os.Getenv("AMQP_URL")

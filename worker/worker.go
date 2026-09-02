@@ -76,10 +76,6 @@ func main() {
 
 	log.Println("Successfully connected to Database!")
 
-	if err := dbpkg.InitSchema(db); err != nil {
-		log.Fatalf("Schema setup error: %v", err)
-	}
-
 	ch, err := rbmq.Connect(amqpURL, 10, 2*time.Second)
 	if err != nil {
 		log.Fatalf("RabbitMQ connection error: %v", err)
