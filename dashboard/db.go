@@ -7,22 +7,10 @@ import (
 	"os"
 	"time"
 
+	models "github.com/Bommel48/go-scraper-notifier/pkg/models"
+
 	_ "github.com/lib/pq"
 )
-
-type PricePoint struct {
-	Price      float64
-	RecordedAt time.Time
-}
-
-type Item struct {
-	ID           int
-	Title        string
-	URL          string
-	Price        float64
-	RecordedAt   time.Time
-	PriceHistory []PricePoint
-}
 
 func connectDB(maxRetries int, retryDelay time.Duration) (*sql.DB, error) {
 	dbHost := os.Getenv("DB_HOST")
@@ -68,7 +56,7 @@ func connectDB(maxRetries int, retryDelay time.Duration) (*sql.DB, error) {
 	return nil, fmt.Errorf("could not connect to Postgres after %d attempts: %w", maxRetries, err)
 }
 
-func listItems(db *sql.DB) ([]Item, error) {
+func listItems(db *sql.DB) ([]models.Item, error) {
 	rows, err := db.Query(`
 	SELECT DISTINCT ON (i.id)
         i.id,
@@ -84,9 +72,9 @@ func listItems(db *sql.DB) ([]Item, error) {
 	}
 	defer rows.Close()
 
-	var items []Item
+	var items []models.Item
 	for rows.Next() {
-		var it Item
+		var it models.Item
 		if err := rows.Scan(&it.ID, &it.Title, &it.URL, &it.Price, &it.RecordedAt); err != nil {
 			return nil, fmt.Errorf("scan error: %w", err)
 		}
@@ -101,8 +89,8 @@ func listItems(db *sql.DB) ([]Item, error) {
 }
 
 // // returns one item + all its price history rows
-func getItem(db *sql.DB, id int) (Item, error) {
-	var it Item
+func getItem(db *sql.DB, id int) (models.Item, error) {
+	var it models.Item
 
 	query := `SELECT id, title, url FROM items WHERE id = $1;`
 	err := db.QueryRow(query, id).Scan(&it.ID, &it.Title, &it.URL)
@@ -118,7 +106,7 @@ func getItem(db *sql.DB, id int) (Item, error) {
 	defer rows.Close()
 
 	for rows.Next() {
-		var p PricePoint
+		var p models.PricePoint
 		if err := rows.Scan(&p.Price, &p.RecordedAt); err != nil {
 			return it, err
 		}

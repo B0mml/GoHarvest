@@ -30,12 +30,18 @@ services:
     ports:
       - "3000:3000"
 
-  scraper:
+  scheduler:
     build:
       context: .
-      dockerfile: Dockerfile.scraper 
+      dockerfile: Dockerfile.scheduler 
     depends_on:
-      - rabbitmq
+      - postgres
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: user
+      DB_PASSWORD: password
+      DB_NAME: itemharvester
 
   worker:
     build:
