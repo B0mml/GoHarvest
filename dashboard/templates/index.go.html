@@ -1,44 +1,42 @@
-<!-- - Table with columns: Title, URL, Latest Price, Last Checked, Actions (Delete) -->
-<!-- - Add-item form at top (title + URL inputs + submit button) -->
-<!-- - HTMX: form submit → POST /items → response is just the new table row → swaps into table body -->
-<!-- - HTMX: delete button → POST /items/{id}/delete → removes the row -->
 {{define "content"}}
 <!-- Add Item Form with HTMX -->
-<div class="bg-white p-6 rounded-lg shadow-sm mb-8 border border-gray-100">
-    <h2 class="text-lg font-semibold mb-4">Track New Product</h2>
+<div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm mb-8 border border-gray-100 dark:border-gray-700 transition-colors">
+    <h2 class="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">Track New Product</h2>
     <form hx-post="/items"
           hx-target="#items-table-body"
           hx-swap="afterbegin"
           hx-on::after-request="if(event.detail.successful) this.reset()"
-          class="flex gap-4">
+          class="flex gap-4 flex-col sm:flex-row">
         <input type="text" name="title" placeholder="Product Title (e.g. RTX 4080)" required
-               class="border rounded px-3 py-2 flex-1 focus:ring focus:ring-indigo-200 outline-none">
+               class="border border-gray-300 dark:border-gray-600 rounded px-3 py-2 flex-1 focus:ring focus:ring-indigo-200 dark:focus:ring-indigo-800 outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400">
         <input type="url" name="url" placeholder="https://example.com/product" required
-               class="border rounded px-3 py-2 flex-1 focus:ring focus:ring-indigo-200 outline-none">
-        <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded font-medium transition">
+               class="border border-gray-300 dark:border-gray-600 rounded px-3 py-2 flex-1 focus:ring focus:ring-indigo-200 dark:focus:ring-indigo-800 outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400">
+        <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded font-medium transition cursor-pointer">
             Add Monitor
         </button>
     </form>
 </div>
 
 <!-- Table of Monitored Items -->
-<div class="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
-    <table class="min-w-full divide-y divide-gray-200">
-        <thead class="bg-gray-50">
+<div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 overflow-x-auto transition-colors">
+    <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+        <thead class="bg-gray-50 dark:bg-gray-900/50">
             <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Title</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">URL</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Latest Price</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Last Checked</th>
-                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Title</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">URL</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Start Price</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Lowest Price</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Current Price</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Last Checked</th>
+                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
             </tr>
         </thead>
-        <tbody id="items-table-body" class="divide-y divide-gray-100">
+        <tbody id="items-table-body" class="divide-y divide-gray-100 dark:divide-gray-700/60">
             {{range .Items}}
                 {{template "item-row" .}}
             {{else}}
                 <tr id="no-items-row">
-                    <td colspan="5" class="px-6 py-8 text-center text-gray-400">No items tracked yet. Add one above!</td>
+                    <td colspan="7" class="px-6 py-8 text-center text-gray-400 dark:text-gray-500">No items tracked yet. Add one above!</td>
                 </tr>
             {{end}}
         </tbody>
@@ -48,21 +46,59 @@
 
 <!-- Reusable Single Item Row Template -->
 {{define "item-row"}}
-<tr id="item-{{.ID}}" class="hover:bg-gray-50 transition">
-    <td class="px-6 py-4 font-medium text-gray-900">
-        <a href="/items/{{.ID}}" class="text-indigo-600 hover:underline">{{.Title}}</a>
+<tr id="item-{{.ID}}" class="hover:bg-gray-50 dark:hover:bg-gray-700/40 transition">
+    <td class="px-6 py-4 font-medium text-gray-900 dark:text-gray-100">
+        <a href="/items/{{.ID}}" class="text-indigo-600 dark:text-indigo-400 hover:underline">{{.Title}}</a>
     </td>
-    <td class="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
-        <a href="{{.URL}}" target="_blank" class="text-blue-500 hover:underline">{{.URL}}</a>
+    <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400 max-w-xs truncate">
+        <a href="{{.URL}}" target="_blank" class="text-blue-500 dark:text-blue-400 hover:underline">{{.URL}}</a>
     </td>
-    <td class="px-6 py-4 text-sm font-semibold text-green-600">
-        {{if gt .Price 0.0}}
-            {{printf "%.2f" .Price}}€
+    <!-- Start Price (Schwarz) -->
+    <td class="px-6 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">
+        {{if gt .StartPrice 0.0}}
+            {{printf "%.2f" .StartPrice}} €
         {{else}}
-            <span class="text-gray-400 font-normal">Pending</span>
+            <span class="text-gray-400 dark:text-gray-500 font-normal">Pending</span>
         {{end}}
     </td>
-    <td class="px-6 py-4 text-sm text-gray-400">
+    <!-- Lowest Price -->
+    <td class="px-6 py-4 text-sm font-medium text-indigo-600 dark:text-indigo-400">
+        {{if gt .LowestPrice 0.0}}
+            {{printf "%.2f" .LowestPrice}} €
+        {{else}}
+            <span class="text-gray-400 dark:text-gray-500 font-normal">Pending</span>
+        {{end}}
+    </td>
+    <!-- Current Price (Grün wenn günstiger, Rot wenn teurer, Schwarz wenn gleich) -->
+    <td class="px-6 py-4 text-sm">
+        {{if and (gt .Price 0.0) (gt .StartPrice 0.0)}}
+            {{if lt .Price .StartPrice}}
+                <!-- Günstiger als Startpreis -> GRÜN -->
+                <span class="text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
+                    {{printf "%.2f" .Price}} €
+                    <span class="text-xs font-semibold">↓</span>
+                </span>
+            {{else if gt .Price .StartPrice}}
+                <!-- Teurer als Startpreis -> ROT -->
+                <span class="text-rose-600 dark:text-rose-400 font-bold flex items-center gap-1">
+                    {{printf "%.2f" .Price}} €
+                    <span class="text-xs font-semibold">↑</span>
+                </span>
+            {{else}}
+                <!-- Identisch zum Startpreis -> SCHWARZ / NEUTRAL -->
+                <span class="text-gray-900 dark:text-gray-100 font-semibold">
+                    {{printf "%.2f" .Price}} €
+                </span>
+            {{end}}
+        {{else if gt .Price 0.0}}
+            <span class="text-gray-900 dark:text-gray-100 font-semibold">
+                {{printf "%.2f" .Price}} €
+            </span>
+        {{else}}
+            <span class="text-gray-400 dark:text-gray-500 font-normal">Pending</span>
+        {{end}}
+    </td>
+    <td class="px-6 py-4 text-sm text-gray-400 dark:text-gray-500">
         {{.RecordedAt.Format "Jan 02, 15:04"}}
     </td>
     <td class="px-6 py-4 text-right">
@@ -71,7 +107,7 @@
                 hx-target="#item-{{.ID}}"
                 hx-swap="outerHTML"
                 hx-confirm="Are you sure you want to stop tracking this item?"
-                class="text-red-500 hover:text-red-700 text-sm font-medium">
+                class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 text-sm font-medium cursor-pointer">
             Delete
         </button>
     </td>

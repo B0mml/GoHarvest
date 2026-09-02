@@ -1,18 +1,52 @@
 {{define "content"}}
-<div class="bg-white p-6 rounded-lg shadow-sm border border-gray-100 mb-8">
-    <a href="/" class="text-indigo-600 hover:underline text-sm">&larr; Back to all items</a>
+<div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 mb-8 transition-colors">
+    <a href="/" class="text-indigo-600 dark:text-indigo-400 hover:underline text-sm font-medium">&larr; Back to all items</a>
 
     <div class="mt-4">
-        <h2 class="text-2xl font-bold text-gray-900">{{.Item.Title}}</h2>
-        <a href="{{.Item.URL}}" target="_blank" class="text-blue-500 hover:underline text-sm break-all">{{.Item.URL}}</a>
+        <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{.Item.Title}}</h2>
+        <a href="{{.Item.URL}}" target="_blank" class="text-blue-500 dark:text-blue-400 hover:underline text-sm break-all">{{.Item.URL}}</a>
     </div>
 
-    <div class="mt-6">
-        <h3 class="text-lg font-semibold mb-4">Price History</h3>
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">
+        <div class="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg border border-gray-100 dark:border-gray-700">
+            <span class="text-xs text-gray-500 dark:text-gray-400 uppercase font-semibold">Start Price</span>
+            <div class="text-xl font-bold text-gray-900 dark:text-gray-100 mt-1">
+                {{if gt .Item.StartPrice 0.0}}{{printf "%.2f" .Item.StartPrice}} €{{else}}Pending{{end}}
+            </div>
+        </div>
+        <div class="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg border border-gray-100 dark:border-gray-700">
+            <span class="text-xs text-gray-500 dark:text-gray-400 uppercase font-semibold">Lowest Price</span>
+            <div class="text-xl font-bold text-indigo-600 dark:text-indigo-400 mt-1">
+                {{if gt .Item.LowestPrice 0.0}}{{printf "%.2f" .Item.LowestPrice}} €{{else}}Pending{{end}}
+            </div>
+        </div>
+        <div class="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg border border-gray-100 dark:border-gray-700">
+            <span class="text-xs text-gray-500 dark:text-gray-400 uppercase font-semibold">Current Price</span>
+            <div class="text-xl font-bold mt-1">
+                {{if and (gt .Item.Price 0.0) (gt .Item.StartPrice 0.0)}}
+                    {{if lt .Item.Price .Item.StartPrice}}
+                        <span class="text-emerald-600 dark:text-emerald-400">{{printf "%.2f" .Item.Price}} € ↓</span>
+                    {{else if gt .Item.Price .Item.StartPrice}}
+                        <span class="text-rose-600 dark:text-rose-400">{{printf "%.2f" .Item.Price}} € ↑</span>
+                    {{else}}
+                        <span class="text-gray-900 dark:text-gray-100">{{printf "%.2f" .Item.Price}} €</span>
+                    {{end}}
+                {{else if gt .Item.Price 0.0}}
+                    <span class="text-gray-900 dark:text-gray-100">{{printf "%.2f" .Item.Price}} €</span>
+                {{else}}
+                    <span class="text-gray-400 dark:text-gray-500 font-normal">Pending</span>
+                {{end}}
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-8">
+        <h3 class="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">Price History</h3>
         {{if .Item.PriceHistory}}
             <canvas id="priceChart" class="w-full" style="max-height: 300px;"></canvas>
         {{else}}
-            <p class="text-gray-400 text-sm">No price history yet. Add a scraper to start tracking prices.</p>
+            <p class="text-gray-400 dark:text-gray-500 text-sm">No price history yet. Add a scraper to start tracking prices.</p>
         {{end}}
     </div>
 </div>
@@ -20,8 +54,9 @@
 {{if .Item.PriceHistory}}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-const labels = [{{range .Item.PriceHistory}}"{{.RecordedAt.Format "2006-01-02"}}",{{end}}];
+const labels = [{{range .Item.PriceHistory}}"{{.RecordedAt.Format "02.01 15:04"}}",{{end}}];
 const prices = [{{range .Item.PriceHistory}}{{.Price}},{{end}}];
+const isDark = document.documentElement.classList.contains('dark');
 
 new Chart(document.getElementById('priceChart'), {
     type: 'line',
@@ -30,17 +65,30 @@ new Chart(document.getElementById('priceChart'), {
         datasets: [{
             label: 'Price (€)',
             data: prices,
-            borderColor: 'rgb(79, 70, 229)',
-            backgroundColor: 'rgba(79, 70, 229, 0.1)',
+            borderColor: 'rgb(99, 102, 241)',
+            backgroundColor: 'rgba(99, 102, 241, 0.15)',
             fill: true,
             tension: 0.3
         }]
     },
     options: {
         responsive: true,
+        plugins: {
+            legend: {
+                labels: {
+                    color: isDark ? '#9ca3af' : '#4b5563'
+                }
+            }
+        },
         scales: {
+            x: {
+                ticks: { color: isDark ? '#9ca3af' : '#6b7280' },
+                grid: { color: isDark ? '#374151' : '#e5e7eb' }
+            },
             y: {
-                beginAtZero: false
+                beginAtZero: false,
+                ticks: { color: isDark ? '#9ca3af' : '#6b7280' },
+                grid: { color: isDark ? '#374151' : '#e5e7eb' }
             }
         }
     }
