@@ -27,7 +27,7 @@
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Start Price</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Lowest Price</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Current Price</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Last Checked</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">Last Checked</th>
                 <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
             </tr>
         </thead>
@@ -98,8 +98,10 @@
             <span class="text-gray-400 dark:text-gray-500 font-normal">Pending</span>
         {{end}}
     </td>
-    <td class="px-6 py-4 text-sm text-gray-400 dark:text-gray-500">
-        {{.RecordedAt.Format "Jan 02, 15:04"}}
+    <td class="px-6 py-4 text-sm text-gray-400 dark:text-gray-500 whitespace-nowrap">
+        <time class="local-time" datetime="{{.RecordedAt.Format "2006-01-02T15:04:05Z07:00"}}">
+            {{.RecordedAt.Format "Jan 02, 15:04"}}
+        </time>
     </td>
     <td class="px-6 py-4 text-right">
         <!-- Delete Button with HTMX confirmation & target -->

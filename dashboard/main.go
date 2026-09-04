@@ -59,7 +59,7 @@ func main() {
 
 	mux := http.NewServeMux()
 
-	mux.Handle("/metrics", promhttp.Handler())
+	mux.Handle("GET /metrics", promhttp.Handler())
 
 	mux.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
 		items, err := listItems(db)
