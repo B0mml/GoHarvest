@@ -32,7 +32,7 @@ func processDelivery(db *sql.DB, d amqp.Delivery, id int) {
 
 	start := time.Now()
 	price, err := scraper.ScrapePrice(scrapeJob.URL)
-	ScrapeDuration.Observe(float64(time.Since(start)))
+	ScrapeDuration.Observe(float64(time.Since(start).Seconds()))
 	if err != nil {
 		log.Printf("Error scraping %s: %v", scrapeJob.URL, err)
 		JobsCounter.WithLabelValues("error_scraping").Inc()
