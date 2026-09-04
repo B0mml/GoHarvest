@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"os"
 	"time"
 
 	dbpkg "github.com/Bommel48/go-scraper-notifier/pkg/db"
@@ -20,6 +21,7 @@ func getOldItems(db *sql.DB) ([]models.Item, error) {
 
 	rows, err := db.Query(query)
 	if err != nil {
+		TotalPublishedCounter.WithLabelValues("error_query").Inc()
 		return nil, fmt.Errorf("query error: %w", err)
 	}
 	defer rows.Close()
@@ -28,20 +30,24 @@ func getOldItems(db *sql.DB) ([]models.Item, error) {
 	for rows.Next() {
 		var it models.Item
 		if err := rows.Scan(&it.ID, &it.Title, &it.URL); err != nil {
+			TotalPublishedCounter.WithLabelValues("error_scan").Inc()
 			return nil, fmt.Errorf("scan error: %w", err)
 		}
 		items = append(items, it)
 	}
 
 	if err := rows.Err(); err != nil {
+		TotalPublishedCounter.WithLabelValues("error_rows").Inc()
 		return nil, fmt.Errorf("rows iteration error: %w", err)
 	}
-
+	TotalPublishedCounter.WithLabelValues("success").Inc()
 	return items, nil
 }
 
 func updateLastChecked(db *sql.DB, item models.Item) error {
+	start := time.Now()
 	_, err := db.Exec(`UPDATE items SET last_checked_at = NOW() WHERE id = $1`, item.ID)
+	TickDurationHistogram.Observe(time.Since(start).Seconds())
 
 	if err != nil {
 		return fmt.Errorf("failed to update last checked item %d: %w", item.ID, err)
@@ -51,7 +57,10 @@ func updateLastChecked(db *sql.DB, item models.Item) error {
 }
 
 func main() {
-	amqpURL := "amqp://guest:guest@rabbitmq:5672/"
+	amqpURL := os.Getenv("AMQP_URL")
+	if amqpURL == "" {
+		amqpURL = "amqp://guest:guest@rabbitmq:5672/"
+	}
 
 	db, err := dbpkg.Connect(10, 2*time.Second)
 	if err != nil {

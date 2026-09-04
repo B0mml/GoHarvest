@@ -10,6 +10,7 @@ import (
 	"time"
 
 	dbpkg "github.com/Bommel48/go-scraper-notifier/pkg/db"
+	metrics "github.com/Bommel48/go-scraper-notifier/pkg/metrics"
 	"github.com/Bommel48/go-scraper-notifier/pkg/models"
 	rbmq "github.com/Bommel48/go-scraper-notifier/pkg/rabbitmq"
 	"github.com/Bommel48/go-scraper-notifier/pkg/scraper"
@@ -55,7 +56,10 @@ func processDelivery(db *sql.DB, d amqp.Delivery, id int) {
 func main() {
 	var wg sync.WaitGroup
 
-	amqpURL := "amqp://guest:guest@rabbitmq:5672/"
+	amqpURL := os.Getenv("AMQP_URL")
+	if amqpURL == "" {
+		amqpURL = "amqp://guest:guest@rabbitmq:5672/"
+	}
 
 	db, err := dbpkg.Connect(10, 2*time.Second)
 	if err != nil {
@@ -76,8 +80,12 @@ func main() {
 		log.Fatalf("Error at Consume: %v", err)
 	}
 
+	metricsAddr := os.Getenv("METRICS_ADDR")
+	if metricsAddr == "" {
+		metricsAddr = ":2112"
+	}
 	go func() {
-		err := StartMetricsServer(":2112")
+		err := metrics.StartMetricsServer(metricsAddr)
 		if err != nil {
 			log.Printf("Metrics server error: %v", err)
 		}
@@ -105,4 +113,8 @@ func main() {
 	}
 
 	wg.Wait()
+}
+
+func StartMetricsServer(metricsAddr string) {
+	panic("unimplemented")
 }

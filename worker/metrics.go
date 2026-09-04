@@ -1,12 +1,8 @@
 package main
 
 import (
-	"log"
-	"net/http"
-
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 var JobsCounter = promauto.NewCounterVec(
@@ -30,14 +26,3 @@ var ActiveWorkers = promauto.NewGauge(
 		Help: "Current Number of active scrapes",
 	},
 )
-
-func StartMetricsServer(addr string) error {
-	http.Handle("/metrics", promhttp.Handler())
-	err := http.ListenAndServe(addr, nil)
-	if err != nil {
-		log.Printf("Listen and serve error: %v", err)
-		return err
-	}
-
-	return nil
-}
