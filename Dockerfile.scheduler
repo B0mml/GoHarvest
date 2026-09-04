@@ -9,3 +9,4 @@ FROM alpine:latest
 WORKDIR /app
 COPY --from=builder /app/bin/scheduler .
 CMD ["./scheduler"]
+
