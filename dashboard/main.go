@@ -12,6 +12,7 @@ import (
 	"time"
 
 	dbpkg "github.com/Bommel48/go-scraper-notifier/pkg/db"
+	metrics "github.com/Bommel48/go-scraper-notifier/pkg/metrics"
 	"github.com/Bommel48/go-scraper-notifier/pkg/models"
 	rbmq "github.com/Bommel48/go-scraper-notifier/pkg/rabbitmq"
 )
@@ -55,6 +56,13 @@ func main() {
 		log.Fatalf("RabbitMQ connection error: %v", err)
 	}
 	defer ch.Close()
+
+	go func() {
+		err := metrics.StartMetricsServer(metricsAddr)
+		if err != nil {
+			log.Printf("Metrics server error: %v", err)
+		}
+	}()
 
 	mux := http.NewServeMux()
 

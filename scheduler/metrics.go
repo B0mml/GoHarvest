@@ -22,3 +22,10 @@ var TickDurationHistogram = promauto.NewHistogram(
 		Help: "Duration of each DB check in seconds",
 	},
 )
+
+var TotalItemsFound = promauto.NewCounter(
+	prometheus.CounterOpts{
+		Name: "scheduler_items_found_total",
+		Help: " Total number of items for refresh found",
+	},
+)
