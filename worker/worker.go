@@ -18,28 +18,37 @@ import (
 )
 
 func processDelivery(db *sql.DB, d amqp.Delivery, id int) {
+	ActiveWorkers.Inc()
+	defer ActiveWorkers.Dec()
+
 	var scrapeJob models.ScrapeJob
 	err := json.Unmarshal(d.Body, &scrapeJob)
 	if err != nil {
 		log.Printf("Error unpacking json: %v", err)
+		JobsCounter.WithLabelValues("error_json").Inc()
 		d.Nack(false, false)
 		return
 	}
 
+	start := time.Now()
 	price, err := scraper.ScrapePrice(scrapeJob.URL)
+	ScrapeDuration.Observe(float64(time.Since(start)))
 	if err != nil {
 		log.Printf("Error scraping %s: %v", scrapeJob.URL, err)
+		JobsCounter.WithLabelValues("error_scraping").Inc()
 		d.Nack(false, false)
 		return
 	}
 	query := `INSERT INTO price_history (item_id, price) VALUES ($1, $2);`
 	if _, err := db.Exec(query, scrapeJob.ID, price); err != nil {
 		log.Printf("Error saving price: %v", err)
+		JobsCounter.WithLabelValues("error_saving").Inc()
 		d.Nack(false, true)
 		return
 	}
 
 	log.Printf("Price saved: %.2f € for item %d by worker %d", price, scrapeJob.ID, id)
+	JobsCounter.WithLabelValues("success").Inc()
 	d.Ack(false)
 }
 
@@ -66,6 +75,13 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error at Consume: %v", err)
 	}
+
+	go func() {
+		err := StartMetricsServer(":2112")
+		if err != nil {
+			log.Printf("Metrics server error: %v", err)
+		}
+	}()
 
 	log.Println(" [*] Worker is waiting for msgs...")
 
