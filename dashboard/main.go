@@ -12,9 +12,9 @@ import (
 	"time"
 
 	dbpkg "github.com/Bommel48/go-scraper-notifier/pkg/db"
-	metrics "github.com/Bommel48/go-scraper-notifier/pkg/metrics"
 	"github.com/Bommel48/go-scraper-notifier/pkg/models"
 	rbmq "github.com/Bommel48/go-scraper-notifier/pkg/rabbitmq"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 var (
@@ -57,14 +57,9 @@ func main() {
 	}
 	defer ch.Close()
 
-	go func() {
-		err := metrics.StartMetricsServer(metricsAddr)
-		if err != nil {
-			log.Printf("Metrics server error: %v", err)
-		}
-	}()
-
 	mux := http.NewServeMux()
+
+	mux.Handle("/metrics", promhttp.Handler())
 
 	mux.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
 		items, err := listItems(db)
