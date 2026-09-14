@@ -16,6 +16,7 @@ func listItems(db *sql.DB) ([]models.Item, error) {
 		COALESCE(latest.price, 0) AS current_price,
 		COALESCE(first_p.price, 0) AS start_price,
 		COALESCE(min_p.price, 0) AS lowest_price,
+		COALESCE(i.target_price, 0) AS target_price,
 		COALESCE(latest.recorded_at, i.created_at) AS recorded_at
 	FROM items i
 	LEFT JOIN LATERAL (
@@ -38,7 +39,7 @@ func listItems(db *sql.DB) ([]models.Item, error) {
 	var items []models.Item
 	for rows.Next() {
 		var it models.Item
-		if err := rows.Scan(&it.ID, &it.Title, &it.URL, &it.Price, &it.StartPrice, &it.LowestPrice, &it.RecordedAt); err != nil {
+		if err := rows.Scan(&it.ID, &it.Title, &it.URL, &it.Price, &it.StartPrice, &it.LowestPrice, &it.TargetPrice, &it.RecordedAt); err != nil {
 			return nil, fmt.Errorf("scan error: %w", err)
 		}
 		items = append(items, it)
@@ -55,8 +56,8 @@ func listItems(db *sql.DB) ([]models.Item, error) {
 func getItem(db *sql.DB, id int) (models.Item, error) {
 	var it models.Item
 
-	query := `SELECT id, title, url, created_at FROM items WHERE id = $1;`
-	err := db.QueryRow(query, id).Scan(&it.ID, &it.Title, &it.URL, &it.RecordedAt)
+	query := `SELECT id, title, url, created_at, COALESCE(target_price, 0) FROM items WHERE id = $1;`
+	err := db.QueryRow(query, id).Scan(&it.ID, &it.Title, &it.URL, &it.RecordedAt, &it.TargetPrice)
 	if err != nil {
 		return it, fmt.Errorf("failed to get item: %w", err)
 	}
@@ -97,15 +98,23 @@ func getItem(db *sql.DB, id int) (models.Item, error) {
 }
 
 // insertItem inserts an item and returns the item ID
-func insertItem(db *sql.DB, title string, url string) (int, error) {
+func insertItem(db *sql.DB, title string, url string, targetPrice float64) (int, error) {
 	query := `
-            INSERT INTO items (user_id, title, url)
-            VALUES ($1, $2, $3)
-            ON CONFLICT (user_id, url) DO UPDATE SET title = EXCLUDED.title
+            INSERT INTO items (user_id, title, url, target_price)
+            VALUES ($1, $2, $3, $4)
+            ON CONFLICT (user_id, url) DO UPDATE SET
+				title = EXCLUDED.title,
+				target_price = EXCLUDED.target_price
             RETURNING id;`
 
 	var itemID int
-	err := db.QueryRow(query, 1, title, url).Scan(&itemID)
+	var priceParam sql.NullFloat64
+	if targetPrice > 0 {
+		priceParam = sql.NullFloat64{
+			Float64: targetPrice, Valid: true}
+	}
+
+	err := db.QueryRow(query, 1, title, url, priceParam).Scan(&itemID)
 	if err != nil {
 		return 0, fmt.Errorf("failed to upsert item: %w", err)
 	}
@@ -118,6 +127,20 @@ func deleteItem(db *sql.DB, id int) error {
 	_, err := db.Exec(`DELETE FROM items WHERE id = $1;`, id)
 	if err != nil {
 		return fmt.Errorf("failed to delete item %d: %w", id, err)
+	}
+
+	return nil
+}
+
+func updateTargetPrice(db *sql.DB, id int, targetPrice float64) error {
+	var priceParam sql.NullFloat64
+	if targetPrice > 0 {
+		priceParam = sql.NullFloat64{Float64: targetPrice, Valid: true}
+	}
+
+	_, err := db.Exec(`UPDATE items SET target_price = $1 WHERE id = $2;`, priceParam, id)
+	if err != nil {
+		return fmt.Errorf("failed to update target price for item %d: %w", id, err)
 	}
 
 	return nil

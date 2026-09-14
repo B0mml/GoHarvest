@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	dbpkg "github.com/Bommel48/go-scraper-notifier/pkg/db"
@@ -83,7 +84,15 @@ func main() {
 			return
 		}
 
-		id, err := insertItem(db, title, url)
+		var targetPrice float64
+		if tpStr := r.FormValue("target_price"); tpStr != "" {
+			cleanStr := strings.Replace(strings.TrimSpace(tpStr), ",", ".", 1)
+			if tp, err := strconv.ParseFloat(cleanStr, 64); err == nil {
+				targetPrice = tp
+			}
+		}
+
+		id, err := insertItem(db, title, url, targetPrice)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 
@@ -163,6 +172,36 @@ func main() {
 		}
 
 		indexTmpl.ExecuteTemplate(w, "item-row", item)
+	})
+
+	mux.HandleFunc("POST /items/{id}/target-price", func(w http.ResponseWriter, r *http.Request) {
+		idStr := r.PathValue("id")
+		id, err := strconv.Atoi(idStr)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		var targetPrice float64
+		if tpStr := r.FormValue("target_price"); tpStr != "" {
+			cleanStr := strings.Replace(strings.TrimSpace(tpStr), ",", ".", 1)
+			if tp, err := strconv.ParseFloat(cleanStr, 64); err == nil && tp > 0 {
+				targetPrice = tp
+			}
+		}
+
+		if err := updateTargetPrice(db, id, targetPrice); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		item, err := getItem(db, id)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		itemTmpl.ExecuteTemplate(w, "target-price-card", map[string]any{"Item": item})
 	})
 
 	log.Println("Dashboard running on :8080")

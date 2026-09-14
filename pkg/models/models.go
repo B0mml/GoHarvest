@@ -11,6 +11,7 @@ type Item struct {
 	ID           int
 	Title        string
 	URL          string
+	TargetPrice  float64
 	Price        float64
 	StartPrice   float64
 	LowestPrice  float64

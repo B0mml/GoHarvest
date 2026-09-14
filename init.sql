@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS items (
     user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     title TEXT NOT NULL,
     url TEXT NOT NULL,
+    target_price NUMERIC(10, 2),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     last_checked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT unique_user_url UNIQUE (user_id, url)

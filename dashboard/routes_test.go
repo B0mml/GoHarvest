@@ -15,4 +15,5 @@ func TestRoutesRegistration(t *testing.T) {
 	mux.HandleFunc("POST /items/{id}/delete", func(w http.ResponseWriter, r *http.Request) {})
 	mux.HandleFunc("GET /items/{id}", func(w http.ResponseWriter, r *http.Request) {})
 	mux.HandleFunc("GET /items/{id}/row", func(w http.ResponseWriter, r *http.Request) {})
+	mux.HandleFunc("POST /items/{id}/target-price", func(w http.ResponseWriter, r *http.Request) {})
 }
