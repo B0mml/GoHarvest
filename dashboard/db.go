@@ -55,8 +55,8 @@ func listItems(db *sql.DB) ([]models.Item, error) {
 func getItem(db *sql.DB, id int) (models.Item, error) {
 	var it models.Item
 
-	query := `SELECT id, title, url FROM items WHERE id = $1;`
-	err := db.QueryRow(query, id).Scan(&it.ID, &it.Title, &it.URL)
+	query := `SELECT id, title, url, created_at FROM items WHERE id = $1;`
+	err := db.QueryRow(query, id).Scan(&it.ID, &it.Title, &it.URL, &it.RecordedAt)
 	if err != nil {
 		return it, fmt.Errorf("failed to get item: %w", err)
 	}
