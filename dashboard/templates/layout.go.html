@@ -79,6 +79,21 @@
             }
             updateThemeUI();
         });
+
+        function formatLocalTimes() {
+            document.querySelectorAll('time.local-time').forEach(el => {
+                const utc = el.getAttribute('datetime');
+                if (utc) {
+                    const date = new Date(utc);
+                    if (!isNaN(date)) {
+                        el.textContent = date.toLocaleDateString([], { month: 'short', day: '2-digit' }) + ', ' +
+                                         date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+                    }
+                }
+            });
+        }
+        formatLocalTimes();
+        document.body.addEventListener('htmx:afterSwap', formatLocalTimes);
     </script>
 </body>
 </html>
